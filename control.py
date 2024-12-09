@@ -161,6 +161,7 @@ def measure():
     listen_input_thread.join()
 
     get_input(2, 3)
+    timer_screen.stop()
 
 
 def config():
