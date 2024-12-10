@@ -216,20 +216,24 @@ class DistanceConfigMenu:
             return self.manual_distance
 
     def auto(self):
-
         self.lcd.clear()
 
         self.lcd.move_to(0, 0)
         self.lcd.putstr(separate_text(f'auto: {self.distance}', '*' if self.selected_type == 0 else ''))
         self.lcd.move_to(0, 1)
-        self.lcd.putstr(separate_text('Select', 'Edit', '↓'))
+        self.lcd.putstr(separate_text('Select', 'Upt', '↓'))
 
-        button_input = get_input(2, 1 if not self.selected_type == 0 else None)
+        button_input = get_input(1 if not self.selected_type == 0 else None)
 
         # if button_input == 1  End the config Menu
 
         if button_input == 1:
             self.selected_type = 0
+
+        if button_input == 2:
+            new_distance = get_distance()
+            if new_distance is not None and new_distance != 1:
+                self.distance = new_distance
 
         if button_input == 3:
             self.manual()

@@ -1,47 +1,68 @@
 from machine import Pin, time_pulse_us
 import time
 
-TRIGGER_PIN = 5
-ECHO_PIN = 18
 
-trigger = Pin(TRIGGER_PIN, Pin.OUT)
-echo = Pin(ECHO_PIN, Pin.IN)
+class UltrasonicSensor:
+    def __init__(self, trigger_pin, echo_pin, detection_threshold=20, max_readings=10):
+        self.trigger = Pin(trigger_pin, Pin.OUT)
+        self.echo = Pin(echo_pin, Pin.IN)
+        self.DETECTION_THRESHOLD = detection_threshold
+        self.MAX_READINGS = max_readings
+        self.NO_RESPONSE = -1
 
-UMBRAL_DETECCION = 20
-SIN_RESPUESTA = -1
-LECTURAS_MAX = 10
+    def measure_distance(self):
+        """
+        Measure distance using ultrasonic sensor with error handling.
 
-def messure_distance():
-    trigger.value(0)
-    time.sleep_us(2)
+        Returns:
+            float: Distance in cm or NO_RESPONSE if measurement fails
+        """
+        # Ensure trigger is low to start
+        self.trigger.value(0)
+        time.sleep(0.000002)
 
-    trigger.value(1)
-    time.sleep_us(10)
-    trigger.value(0)
+        # Send ultrasonic pulse
+        self.trigger.value(1)
+        time.sleep(0.00001)
+        self.trigger.value(0)
 
-    duracion = time_pulse_us(echo, 1, 100000)
+        # Wait for echo and measure pulse duration
+        try:
+            duration = time_pulse_us(self.echo, 1, 30000)  # Reduced timeout
+        except OSError:
+            return self.NO_RESPONSE
 
-    if duracion < 0:
-        return SIN_RESPUESTA
+        if duration < 0:
+            return self.NO_RESPONSE
 
-    distancia = (duracion / 2) * 0.0343
-    return distancia
+        # Calculate distance (speed of sound is 343 m/s)
+        distance = (duration / 2) * 0.0343
+        return round(distance, 2)
 
+    def wait_for_detection(self):
+        """
+        Wait for a significant change in distance or initial detection.
 
-def wait_person():
-    distancias = [SIN_RESPUESTA] * LECTURAS_MAX
-    indice = 0
+        Returns:
+            float: Detected distance or NO_RESPONSE
+        """
+        # Initialize circular buffer for readings
+        readings = [self.NO_RESPONSE] * self.MAX_READINGS
+        index: int = 0
 
-    while True:
-        distancia_actual = messure_distance()
-        distancias[indice] = distancia_actual
-        indice = (indice + 1) % LECTURAS_MAX
+        while True:
+            current_distance = self.measure_distance()
+            readings[index] = current_distance
+            index = (index + 1) % self.MAX_READINGS
 
-        lectura_anterior = distancias[indice - 1]
+            # Check previous reading
+            prev_index = (index - 1) % self.MAX_READINGS
+            prev_distance = readings[prev_index]
 
-        if lectura_anterior == SIN_RESPUESTA and distancia_actual != SIN_RESPUESTA:
-            return distancia_actual
-        elif abs(distancia_actual - lectura_anterior) > UMBRAL_DETECCION:
-            return distancia_actual
+            # Detection conditions
+            if (prev_distance == self.NO_RESPONSE and current_distance != self.NO_RESPONSE) or \
+                    (current_distance != self.NO_RESPONSE and
+                     abs(current_distance - prev_distance) > self.DETECTION_THRESHOLD):
+                return current_distance
 
-        time.sleep(0.02)
+            time.sleep(0.02)  # Use ms for better readability

@@ -2,6 +2,7 @@ from machine import Pin, SPI
 from nrf24l01 import NRF24L01
 import threading
 import time
+import statistics
 
 
 class Wifi:
@@ -24,60 +25,22 @@ class Wifi:
 
         self.nrf.open_tx_pipe(send_address)
         self.nrf.open_rx_pipe(1, receive_address)
+        self.get_distance = DistanceMeasurement(self)
         self.listener = NRFListener(self.nrf)
 
-    def send_message(self, message):
+    def send_message(self, message: str):
         """
         Enviar un mensaje utilizando NRF24L01
         """
         self.listener.stop()
         self.nrf.stop_listening()  # Cambiar a modo de transmisión
         try:
-            self.nrf.send(message)
+            self.nrf.send(message.encode())
             return True
         except OSError:
             return False
         finally:
             self.nrf.start_listening()  # Regresar al modo de recepción
-
-    def transmitter_get_distance(self) -> float | None:
-        """
-        Calcula la distancia al receptor enviando un 'ping' y midiendo el tiempo de ida y vuelta.
-
-        Returns:
-            Distancia estimada en metros, o None si falla.
-        """
-        self.nrf.stop_listening()
-        start_time = time.ticks_us()
-
-        # Enviar mensaje 'ping'
-        if not self.send_message(b'ping'):
-            print("Error al enviar el mensaje")
-            return None
-
-        # Escuchar la respuesta 'pong'
-        self.listener.start_listening()
-        while True:
-            response = self.listener.response()
-            if response is not None:
-                if response == b'pong':
-                    end_time = time.ticks_us()
-                    round_trip_time = time.ticks_diff(end_time, start_time)
-                    distance = (round_trip_time / 2) * 3e-4  # Tiempo a distancia (en metros)
-                    self.listener.stop()
-                    return distance
-            time.sleep(0.01)
-
-    def receiver_get_distance(self) -> None:
-        """
-        Responde a las solicitudes 'ping' enviando un 'pong'.
-        """
-        self.listener.start_listening()
-        while True:
-            message = self.listener.response()
-            if message is not None:
-                if message == b'ping':
-                    self.send_message(b'pong')
 
 
 class NRFListener:
@@ -90,10 +53,10 @@ class NRFListener:
         """
         self._nrf = nrf
         self._running = False
-        self._response = None
+        self._response: bytes | None = None
         self._listener_thread = None
 
-    def start_listening(self):
+    def start_listening(self, sleep_time: float = 0.01):
         """
         Inicia el proceso de escucha en segundo plano.
         """
@@ -102,11 +65,11 @@ class NRFListener:
             return
         self._running = True
         self._response = None
-        self._listener_thread = threading.Thread(target=self._listen)
+        self._listener_thread = threading.Thread(target=self._listen, args=(sleep_time,))
         self._listener_thread.daemon = True
         self._listener_thread.start()
 
-    def _listen(self):
+    def _listen(self, sleep_time: float):
         """
         Método privado para escuchar mensajes en un bucle en segundo plano.
         """
@@ -119,7 +82,8 @@ class NRFListener:
                 while self._nrf.any():
                     self._response = self._nrf.recv()
                     self.stop()
-            time.sleep(0.01)  # Pausa breve para reducir carga de CPU
+            if sleep_time:
+                time.sleep(sleep_time)  # Pausa breve para reducir carga de CPU
 
     def stop(self):
         """
@@ -138,9 +102,53 @@ class NRFListener:
             La respuesta recibida o None si no hay respuesta.
         """
         if self._response is not None:
-            response = self._response
+            response: str = self._response.decode()
             try:
                 self._response = None
                 self.stop()
             finally:
                 return response
+
+
+class DistanceMeasurement:
+    def __init__(self, wifi_instance: Wifi):
+        self.wifi = wifi_instance
+
+    def transmitter(self, timeout=1.0, samples: int = 5) -> float | None:
+        self.wifi.nrf.stop_listening()
+        distances: list[float | None] = []
+
+        for _ in range(samples):
+            start_time = time.process_time()
+            if not self.wifi.send_message('ping'):
+                print("Error sending ping")
+                continue
+
+            self.wifi.nrf.start_listening()
+            while time.process_time() - start_time < timeout:
+                response = self.wifi.nrf.recv()
+                if response == b'pong':
+                    # Speed of radio wave is approximately 3e8 m/s
+                    round_trip_time = time.time() - start_time
+                    distances.append((round_trip_time * 3e8) / 2)
+                    break
+
+            self.wifi.nrf.stop_listening()
+            time.sleep(0.1)
+
+        self.wifi.nrf.stop_listening()
+        self.wifi.send_message('stop')
+        return statistics.mean(distances) // 1 if distances else None
+
+    def receiver(self, timeout: float = 2.0) -> None:
+        self.wifi.nrf.start_listening()
+        init_t = time.process_time()
+
+        while time.process_time() - init_t < timeout:
+            message = self.wifi.nrf.recv()
+            if message == b'ping':
+                self.wifi.send_message('pong')
+                init_t = time.process_time()
+            elif message == b'stop':
+                break
+        self.wifi.nrf.stop_listening()

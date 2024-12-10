@@ -2,10 +2,10 @@ import time
 from threading import Thread
 
 import wifi_manager
-import sensor
+from sensor import UltrasonicSensor
 
 wifi = wifi_manager.Wifi(b"amongus", b"susimpostor")  # Diceccion de recepcion y emision
-
+sensor = UltrasonicSensor(26, 14)
 
 def main():
     wifi.listener.start_listening()
@@ -18,7 +18,7 @@ def main():
             break
         time.sleep(0.1)
 
-    sensor_thread = Thread(target=sensor.wait_person, daemon=True)
+    sensor_thread = Thread(target=sensor.wait_for_detection, daemon=True)
     sensor_thread.start()
 
     wifi.listener.start_listening()
