@@ -156,7 +156,6 @@ def measure():
             break
         time.sleep(0.1)
 
-    esp_now.listener.stop()
     listening = False
     listen_input_thread.join()
 

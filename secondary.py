@@ -7,11 +7,12 @@ from sensor import UltrasonicSensor
 wifi = wifi_manager.Wifi(b"amongus", b"susimpostor")  # Diceccion de recepcion y emision
 sensor = UltrasonicSensor(26, 14)
 
+
 def main():
     wifi.listener.start_listening()
     while True:
         if wifi.listener.response() == 'distance':
-            wifi.receiver_get_distance()
+            wifi.get_distance.receiver()
             wifi.listener.start_listening()
 
         elif wifi.listener.response() == 'start':
@@ -28,7 +29,7 @@ def main():
             break
 
         elif wifi.listener.response() == 'distance':
-            wifi.receiver_get_distance()
+            wifi.get_distance.receiver()
             wifi.listener.start_listening()
 
     sensor_thread.join()
