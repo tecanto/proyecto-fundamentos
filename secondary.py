@@ -12,11 +12,15 @@ def main():
     wifi.listener.start_listening()
     while True:
         if wifi.listener.response() == 'distance':
+            wifi.send_message('ok')
             wifi.get_distance.receiver()
             wifi.listener.start_listening()
 
         elif wifi.listener.response() == 'start':
+            wifi.send_message('ok')
             break
+        elif wifi.listener.response() == 'stop':
+            wifi.listener.start_listening()
         time.sleep(0.1)
 
     sensor_thread = Thread(target=sensor.wait_for_detection, daemon=True)
@@ -31,6 +35,10 @@ def main():
         elif wifi.listener.response() == 'distance':
             wifi.get_distance.receiver()
             wifi.listener.start_listening()
+
+        elif wifi.listener.response() == 'stop':
+            sensor.stop()
+            return
 
     sensor_thread.join()
     wifi.send_message('end')

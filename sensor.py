@@ -9,6 +9,7 @@ class UltrasonicSensor:
         self.DETECTION_THRESHOLD = detection_threshold
         self.MAX_READINGS = max_readings
         self.NO_RESPONSE = -1
+        self.running = False
 
     def measure_distance(self):
         """
@@ -49,8 +50,9 @@ class UltrasonicSensor:
         # Initialize circular buffer for readings
         readings = [self.NO_RESPONSE] * self.MAX_READINGS
         index: int = 0
+        self.running = True
 
-        while True:
+        while self.running:
             current_distance = self.measure_distance()
             readings[index] = current_distance
             index = (index + 1) % self.MAX_READINGS
@@ -63,6 +65,10 @@ class UltrasonicSensor:
             if (prev_distance == self.NO_RESPONSE and current_distance != self.NO_RESPONSE) or \
                     (current_distance != self.NO_RESPONSE and
                      abs(current_distance - prev_distance) > self.DETECTION_THRESHOLD):
+                self.running = False
                 return current_distance
 
             time.sleep(0.02)  # Use ms for better readability
+
+    def stop(self):
+        self.running = False

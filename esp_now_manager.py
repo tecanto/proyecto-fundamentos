@@ -38,21 +38,6 @@ class ESPNow:
             print(f"Error enviando mensaje: {e}")
             return False
 
-    def _esp_now_recv(self, result: list | None = None):
+    def get_message(self) -> str | None:
         peer, message = self.esp_now.recv()
-        if result:
-            result.append(message)
         return message.encode() if message else None
-
-    def get_message(self, timeout: float | None = None) -> str | None:
-        if not timeout:
-            return self._esp_now_recv()
-        result = []
-        esp_now_recv_thread = threading.Thread(target=self._esp_now_recv, args=(result,))
-        init_t = time.process_time()
-        esp_now_recv_thread.start()
-        while time.process_time() - init_t < timeout:
-            if result:
-                break
-            time.sleep(0.1)
-        return result[-1]

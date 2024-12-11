@@ -63,11 +63,10 @@ def get_input(*excluded_buttons: int) -> int:
 
 
 def listen_esp_now_response(limit: int | None = RESPONSE_MAX_WAIT_TIME) -> str | None:
-    esp_now.listener.start_listening()
-
     init_wait_time = time.process_time()
+    response = esp_now.get_message()
     while True:
-        response = esp_now.listener.response()
+
 
         if response:
             break
@@ -121,8 +120,8 @@ def measure():
     paused_time: int = 0
 
     esp_now.send_message('start')
-    response = listen_esp_now_response()
-    if not response == 'ok':
+    response = esp_now.get_message()                 ########################
+    if response != 'ok':
         return
 
     listening = True
@@ -131,30 +130,15 @@ def measure():
     timer_screen = LcdTimer(lcd)
     timer_screen.distance = str(distance)
 
-    esp_now.listener.start_listening()
-    while True:
-        response = esp_now.listener.response()
-        if response and response.isdigit():
-            timer_screen.first_timer_running = False
-            timer_screen.first_timer = int(response) - paused_time
-            break
+    response = esp_now.get_message()               ################
+    if response and response.isdigit():
+        timer_screen.first_timer_running = False
+        timer_screen.first_timer = int(response) - paused_time
 
-        if not listen_input_thread.is_alive():
-            break
-
-        time.sleep(0.1)
-
-    esp_now.listener.start_listening()
-    while True:
-        response = esp_now.listener.response()
-        if response and response.isdigit():
-            timer_screen.second_timer_running = False
-            timer_screen.second_timer = int(response) - paused_time
-            break
-
-        if not listen_input_thread.is_alive():
-            break
-        time.sleep(0.1)
+    response = esp_now.get_message()          ##############
+    if response and response.isdigit():
+        timer_screen.second_timer_running = False
+        timer_screen.second_timer = int(response) - paused_time
 
     listening = False
     listen_input_thread.join()
