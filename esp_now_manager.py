@@ -1,5 +1,4 @@
-from esp import espnow
-import network
+import espnow
 import time
 import threading
 
@@ -13,7 +12,7 @@ class ESPNow:
             peer_mac: Dirección MAC del dispositivo peer en formato bytes.
         """
         self.esp_now = espnow.ESPNow()
-        self.esp_now.init()
+        self.esp_now.active(True)
         self.peer_mac = peer_mac
         self.responses = []
 
@@ -38,6 +37,21 @@ class ESPNow:
             print(f"Error enviando mensaje: {e}")
             return False
 
-    def get_message(self) -> str | None:
+    def _esp_now_recv(self, result: list | None = None):
         peer, message = self.esp_now.recv()
+        if result:
+            result.append(message)
         return message.encode() if message else None
+
+    def get_message(self, timeout: float | None = None) -> str | None:
+        if not timeout:
+            return self._esp_now_recv()
+        result = []
+        esp_now_recv_thread = threading.Thread(target=self._esp_now_recv, args=(result,))
+        init_t = time.process_time()
+        esp_now_recv_thread.start()
+        while time.process_time() - init_t < timeout:
+            if result:
+                break
+            time.sleep(0.1)
+        return result[-1]

@@ -2,7 +2,6 @@ from machine import Pin, SPI
 from nrf24l01 import NRF24L01
 import threading
 import time
-import statistics
 
 
 class Wifi:
@@ -138,7 +137,7 @@ class DistanceMeasurement:
 
         self.wifi.nrf.stop_listening()
         self.wifi.send_message('stop')
-        return statistics.mean(distances) // 1 if distances else None
+        return sum(distances) / len(distances) if distances else None
 
     def receiver(self, timeout: float = 2.0) -> None:
         self.wifi.nrf.start_listening()

@@ -7,8 +7,9 @@ from sensor import UltrasonicSensor
 
 sensor = UltrasonicSensor(26, 14)
 wifi = wifi_manager.Wifi(send_address=b"1NODE", receive_address=b"2NODE")  # Diceccion de recepcion y emision
-cono_mac = 'A0:B7:65:0F:6C:48'
-esp_now = esp_now_manager.ESPNow(bytes(int(x, 16) for x in cono_mac.split(':')))  # Direccion mac del control
+cono_mac = '34:5F:45:A9:4C:CC'
+peer_mac = bytes(int(x, 16) for x in cono_mac.split(':'))
+esp_now = esp_now_manager.ESPNow(peer_mac)  # Direccion mac del control
 running = False
 
 
@@ -53,7 +54,7 @@ def listen_wifi_timeout(timeout: float) -> str:
 
 
 def wait_for_sensor():
-    sensor_wait_thread = Thread(target=sensor.wait_for_detection, daemon=True)
+    sensor_wait_thread = Thread(target=sensor.wait_for_detection)
     sensor_wait_thread.start()
     while sensor_wait_thread.is_alive():
         if not running:
@@ -90,7 +91,6 @@ def main():
         return
     esp_now.send_message(str((stages_init_time - stage_one_end_time) // 1))  # mandar el tiempo de la etapa 1
 
-
     if not running:
         return
 
@@ -104,9 +104,10 @@ def main():
 
 
 if __name__ == "__main__":
-    listener_thread = Thread(target=esp_now_listener, daemon=True)
+    listener_thread = Thread(target=esp_now_listener)
     listener_thread.start()
     while True:
+        print("a")
         try:
             main()
         finally:

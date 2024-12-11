@@ -23,7 +23,7 @@ def main():
             wifi.listener.start_listening()
         time.sleep(0.1)
 
-    sensor_thread = Thread(target=sensor.wait_for_detection, daemon=True)
+    sensor_thread = Thread(target=sensor.wait_for_detection)
     sensor_thread.start()
 
     wifi.listener.start_listening()
