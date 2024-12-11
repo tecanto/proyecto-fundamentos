@@ -13,7 +13,7 @@ WELCOME_MESSAGES = (
 
 # EspNow Configuration
 MASTER_MAC_ADDRESS = b'que bonitos ojos tines'
-esp_now = esp_now_manager.ESPNow(MASTER_MAC_ADDRESS)
+esp_now = esp_now_manager.ESPNow(bytes(int(x, 16) for x in MASTER_MAC_ADDRESS.split(':')))
 
 # I2C Module configuration for 2x16 lcd display
 i2c = I2C(0, scl=Pin(23), sda=Pin(22), freq=400000)

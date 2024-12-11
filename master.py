@@ -6,8 +6,9 @@ import wifi_manager
 from sensor import UltrasonicSensor
 
 sensor = UltrasonicSensor(26, 14)
-wifi = wifi_manager.Wifi(b"amongus", b"susimpostor")  # Diceccion de recepcion y emision
-esp_now = esp_now_manager.ESPNow(b"hawktuah")  # Direccion mac del control
+wifi = wifi_manager.Wifi(send_address=b"1NODE", receive_address=b"2NODE")  # Diceccion de recepcion y emision
+cono_mac = 'A0:B7:65:0F:6C:48'
+esp_now = esp_now_manager.ESPNow(bytes(int(x, 16) for x in cono_mac.split(':')))  # Direccion mac del control
 running = False
 
 

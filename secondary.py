@@ -4,7 +4,7 @@ from threading import Thread
 import wifi_manager
 from sensor import UltrasonicSensor
 
-wifi = wifi_manager.Wifi(b"amongus", b"susimpostor")  # Diceccion de recepcion y emision
+wifi = wifi_manager.Wifi(send_address=b"1NODE", receive_address=b"2NODE")  # Diceccion de recepcion y emision
 sensor = UltrasonicSensor(26, 14)
 
 
