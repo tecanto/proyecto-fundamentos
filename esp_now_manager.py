@@ -1,7 +1,7 @@
 import espnow
 import time
 import threading
-
+from network import WLAN, STA_IF
 
 class ESPNow:
     def __init__(self, peer_mac: bytes):
@@ -11,6 +11,8 @@ class ESPNow:
         Args:
             peer_mac: Dirección MAC del dispositivo peer en formato bytes.
         """
+        wlan = WLAN(STA_IF)
+        wlan.active(True)  # Activa el modo estación
         self.esp_now = espnow.ESPNow()
         self.esp_now.active(True)
         self.peer_mac = peer_mac
@@ -41,16 +43,16 @@ class ESPNow:
         peer, message = self.esp_now.recv()
         if result:
             result.append(message)
-        return message.encode() if message else None
+        return message.decode() if message else None
 
     def get_message(self, timeout: float | None = None) -> str | None:
         if not timeout:
             return self._esp_now_recv()
         result = []
         esp_now_recv_thread = threading.Thread(target=self._esp_now_recv, args=(result,))
-        init_t = time.process_time()
+        init_t = time.time()
         esp_now_recv_thread.start()
-        while time.process_time() - init_t < timeout:
+        while time.time() - init_t < timeout:
             if result:
                 break
             time.sleep(0.1)

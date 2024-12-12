@@ -25,20 +25,24 @@ def esp_now_listener():
             break
 
         if response == 'distance':
+            print('distance')
             if not wifi.send_message('distance'):
                 esp_now.send_message("1")  # si el segundo cono no esta encendido mandar una distancia falsa
 
+            print('lisening')
             response = listen_wifi_timeout(0.7)
             if response != 'ok':
-                continue
-
+                esp_now.send_message("1")
+            
+            print('got_response')
             distance = wifi.get_distance.transmitter()
 
+            print(distance)
             if distance is None:
                 esp_now.send_message("1")  # si no hubo respuesta mandar una distancia falsa
 
             esp_now.send_message(str(distance))
-
+            print('sended distance')
         if response == 'stop':
             running = False
 
@@ -46,8 +50,8 @@ def esp_now_listener():
 def listen_wifi_timeout(timeout: float) -> str:
     response = None
     wifi.listener.start_listening()
-    init_t = time.process_time()
-    while time.process_time() - init_t < timeout:
+    init_t = time.time()
+    while time.time() - init_t < timeout:
         response = wifi.listener.response()
     if response:
         return response
@@ -78,7 +82,7 @@ def main():
     if not running:
         return
 
-    stages_init_time: float = time.process_time()
+    stages_init_time: float = time.time()
     wifi.listener.start_listening()
     while True:
         if wifi.listener.response():
@@ -86,7 +90,7 @@ def main():
 
         time.sleep(0.1)
 
-    stage_one_end_time = time.process_time()
+    stage_one_end_time = time.time()
     if not running:
         return
     esp_now.send_message(str((stages_init_time - stage_one_end_time) // 1))  # mandar el tiempo de la etapa 1
@@ -95,7 +99,7 @@ def main():
         return
 
     wait_for_sensor()
-    second_stage_end_time = time.process_time()
+    second_stage_end_time = time.time()
 
     if not running:
         return
@@ -107,7 +111,6 @@ if __name__ == "__main__":
     listener_thread = Thread(target=esp_now_listener)
     listener_thread.start()
     while True:
-        print("a")
         try:
             main()
         finally:

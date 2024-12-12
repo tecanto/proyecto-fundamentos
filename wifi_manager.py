@@ -118,13 +118,13 @@ class DistanceMeasurement:
         distances: list[float | None] = []
 
         for _ in range(samples):
-            start_time = time.process_time()
+            start_time = time.time()
             if not self.wifi.send_message('ping'):
                 print("Error sending ping")
                 continue
 
             self.wifi.nrf.start_listening()
-            while time.process_time() - start_time < timeout:
+            while time.time() - start_time < timeout:
                 response = self.wifi.nrf.recv()
                 if response == b'pong':
                     # Speed of radio wave is approximately 3e8 m/s
@@ -141,13 +141,13 @@ class DistanceMeasurement:
 
     def receiver(self, timeout: float = 2.0) -> None:
         self.wifi.nrf.start_listening()
-        init_t = time.process_time()
+        init_t = time.time()
 
-        while time.process_time() - init_t < timeout:
+        while time.time() - init_t < timeout:
             message = self.wifi.nrf.recv()
             if message == b'ping':
                 self.wifi.send_message('pong')
-                init_t = time.process_time()
+                init_t = time.time()
             elif message == b'stop':
                 break
         self.wifi.nrf.stop_listening()

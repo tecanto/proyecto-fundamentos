@@ -3,8 +3,7 @@ import random
 from threading import Thread
 from machine import I2C, Pin
 import i2c_lcd
-import espnow
-from network import WLAN, STA_IF
+import esp_now_manager
 
 
 def pad_text(text: str):
@@ -65,14 +64,14 @@ class EspNowListenStages:
     def listen_for_stage_results(self):
         self.running = True
 
-        _, response = esp_now.recv()
+        response = esp_now.get_message()
         if not self.running:
             return
         self.timer_screen.first_timer_running = False
         if response and response.isdigit():
             self.timer_screen.first_timer = int(response) - self.paused_time
 
-        _, response = esp_now.recv()
+        response = esp_now.get_message()
         if not self.running:
             return
         self.timer_screen.second_timer_running = False
@@ -91,8 +90,8 @@ def measure():
     distance: int = get_distance() if not overwrite_distance else overwrite_distance
     distance = max(1, min(distance, 99))
 
-    esp_now.send(peer_mac, 'start'.encode())
-    _, response = esp_now.recv()
+    esp_now.send_message('start')
+    response = esp_now.get_message()
     if not response == 'ok':
         return
 
@@ -112,10 +111,10 @@ def measure():
             timer_screen.second_timer_running = not running
             running = not running
             if running:
-                paused_time = paused_time + time.process_time() - init_paused if init_paused else 0
-            init_paused = int(time.process_time() // 1)
+                paused_time = paused_time + time.time() - init_paused if init_paused else 0
+            init_paused = int(time.time() // 1)
         if button_input == 3:
-            esp_now.send(peer_mac, 'stop'.encode())
+            esp_now.send_message('stop')
             timer_screen.first_timer_running = False
             timer_screen.second_timer_running = False
             break
@@ -141,6 +140,7 @@ def config():
         return
 
     if button_input == 1:
+        print('ice cream yummy')
         overwrite_distance = distance_config_menu.start()
 
     if button_input == 2:
@@ -151,9 +151,11 @@ def config():
 
 
 def get_distance():
-    esp_now.send(peer_mac, 'distance'.encode())
+    esp_now.send_message('distance')
+    print('nose')
 
-    _, response = esp_now.recv()
+    response = esp_now.get_message()
+    print('pito')
     distance = int(response) if response and response.isdigit() else 1
 
     distance = max(1, min(distance, 99))
@@ -301,27 +303,19 @@ class LcdTimer:
 
 if __name__ == '__main__':
     buttons = {
-    0: Pin(12, Pin.IN, Pin.PULL_UP),  # home_button
-    1: Pin(14, Pin.IN, Pin.PULL_UP),  # start_button
-    2: Pin(27, Pin.IN, Pin.PULL_UP),  # pause_button
-    3: Pin(26, Pin.IN, Pin.PULL_UP),  # stop_button
+        0: Pin(12, Pin.IN, Pin.PULL_UP),  # home_button
+        1: Pin(14, Pin.IN, Pin.PULL_UP),  # start_button
+        2: Pin(27, Pin.IN, Pin.PULL_UP),  # pause_button
+        3: Pin(26, Pin.IN, Pin.PULL_UP),  # stop_button
     }
     # Mensajes de bienvenida
-    WELCOME_MESSAGES = ("Bienvenido",)
-
-    # Configuración de Wi-Fi en modo estación
-    wlan = WLAN(STA_IF)
-    wlan.active(True)  # Activa el modo estación
-    if not wlan.active():
-        raise RuntimeError("Error al activar el modo estación del Wi-Fi.")
+    WELCOME_MESSAGES = ("Bienvenido", 'HOLAAA!!')
 
     # Configuración de EspNow
     MASTER_MAC_ADDRESS = 'A0:B7:65:0F:6C:48'
     peer_mac = bytes([int(x, 16) for x in MASTER_MAC_ADDRESS.split(':')])
 
-    esp_now = espnow.ESPNow()
-    esp_now.active(True)
-    esp_now.add_peer(peer_mac)
+    esp_now = esp_now_manager.ESPNow(peer_mac)
 
     # Configuración del módulo I2C para la pantalla LCD 2x16
     i2c = I2C(0, scl=Pin(23), sda=Pin(22), freq=400000)
